@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather App</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .app-container {
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            background: #000000;
+            
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        h1 {
+            color: #4a90e2;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .input-group input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            flex-grow: 1;
+        }
+
+        .input-group button {
+            padding: 10px;
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .card {
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 10px 0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .small-card {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .small-cards-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .forecast-small-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background-color: #e0f7fa;
+            border-radius: 8px;
+            margin: 5px;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .forecast-small-card i {
+            font-size: 24px; /* Icon size */
+            margin-right: 10px; /* Space between icon and text */
+        }
+
+        .chart-container {
+            position: relative;
+            height: auto;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        /* Loader styles */
+        .loader {
+            display: none; /* Hidden by default */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+        }
+
+        /* Desktop styles */
+        @media (min-width: 769px) {
+            .chart-container {
+                display: inline-block; /* Allow charts to sit side by side */
+                width: calc(65.33% - 20px); /* Adjust to three columns with gaps */
+                margin: 10px; /* Add margin for spacing */
+            }
+        }
+
+        @media (max-width: 768px) {
+            .input-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .input-group input,
+            .input-group button {
+                width: 100%;
+            }
+
+            .small-card,
+            .forecast-small-card {
+                flex: 1 1 100%; /* Full width on smaller screens */
+            }
+
+            .chart-container {
+                height: auto; /* Adjust chart height for mobile */
+            }
+            .app-container {
+            width: 100%;
+            padding: 20px;
+            background: #000000;
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <h1>Weather App</h1>
+        <div class="input-group">
+            <input type="text" id="locationInput" placeholder="Enter location (e.g., New York)">
+            <button id="getWeatherButton">Get Weather</button>
+        </div>
+
+        <div id="currentWeather" class="card"></div>
+        <div id="forecast" class="card"></div>
+
+        <div class="loader">
+            <i class="fas fa-spinner fa-spin fa-3x" style="color: #4a90e2;"></i>
+        </div>
+<br>
+        <div class="chart-container">
+            <div class="chart-item">
+                <canvas id="tempChart"></canvas>
+            </div>
+            <br><br><br><br><hr>
+            <div class="chart-item">
+                <canvas id="precipChart"></canvas>
+            </div>
+            <br><br><br><br><hr>
+            <div class="chart-item">
+                <canvas id="windChart"></canvas>
+            </div>
+            <br><br><br><br><hr>
+            <div class="chart-item">
+                <canvas id="humidityChart"></canvas>
+            </div>
+            <br><br><br><br><hr>
+            <div class="chart-item">
+                <canvas id="uvIndexChart"></canvas>
+            </div>
+            <br><br><br><br><hr>
+            <div class="chart-item">
+                <canvas id="pressureChart"></canvas>
+            </div>
+            <br><br><br><br><hr>
+            <div class="chart-item">
+                <canvas id="aqiChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = 'QB5DWT4KA4Z4MG8UPS56PVV39'; // Replace with your actual API key
+        const API_BASE_URL = 'https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline';
+
+        document.getElementById('getWeatherButton').addEventListener('click', () => {
+            const location = document.getElementById('locationInput').value;
+            if (location) {
+                getWeatherData(location);
+            } else {
+                Swal.fire('Error!', 'Please enter a valid location.', 'error');
+            }
+        });
+
+        async function getWeatherData(location) {
+            const loader = document.querySelector('.loader');
+            loader.style.display = 'block'; // Show loader
+            try {
+                const url = `${API_BASE_URL}/${location}?unitGroup=metric&key=${API_KEY}&include=current,days&elements=temp,feelslike,humidity,precipprob,windspeed,winddir,uvindex,aqi,sunset,sunrise,pressure,dewpoint,visibility`;
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Error: ${errorData.message}`);
+                }
+
+                const data = await response.json();
+
+                if (!data || !data.currentConditions || !data.days) {
+                    Swal.fire('Error!', 'Could not retrieve weather data.', 'error');
+                    return;
+                }
+
+                displayCurrentWeather(location, data.currentConditions);
+                displayForecast(data.days.slice(1, 6));
+                createTemperatureChart(data.days);
+                createPrecipitationChart(data.days);
+                createWindChart(data.days);
+                createHumidityChart(data.days);
+                createUVIndexChart(data.days);
+                createPressureChart(data.days);
+                createAQIChart(data.days);
+            } catch (error) {
+                console.error('Error fetching weather data:', error);
+                Swal.fire('Error!', error.message, 'error');
+            } finally {
+                loader.style.display = 'none'; // Hide loader
+            }
+        }
+
+        function displayCurrentWeather(location, weatherData) {
+            const currentWeatherDiv = document.getElementById('currentWeather');
+            currentWeatherDiv.innerHTML = `
+                <h2>Current Weather in ${location}</h2>
+                <div class="small-cards-container">
+                    <div class="small-card">
+                        <h5>Temperature</h5>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="70" height="70" fill="currentColor" class="bi bi-thermometer-sun" viewBox="0 0 16 16">
+  <path d="M5 12.5a1.5 1.5 0 1 1-2-1.415V2.5a.5.5 0 0 1 1 0v8.585A1.5 1.5 0 0 1 5 12.5"/>
+  <path d="M1 2.5a2.5 2.5 0 0 1 5 0v7.55a3.5 3.5 0 1 1-5 0zM3.5 1A1.5 1.5 0 0 0 2 2.5v7.987l-.167.15a2.5 2.5 0 1 0 3.333 0L5 10.486V2.5A1.5 1.5 0 0 0 3.5 1m5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0v-1a.5.5 0 0 1 .5-.5m4.243 1.757a.5.5 0 0 1 0 .707l-.707.708a.5.5 0 1 1-.708-.708l.708-.707a.5.5 0 0 1 .707 0M8 5.5a.5.5 0 0 1 .5-.5 3 3 0 1 1 0 6 .5.5 0 0 1 0-1 2 2 0 0 0 0-4 .5.5 0 0 1-.5-.5M12.5 8a.5.5 0 0 1 .5-.5h1a.5.5 0 1 1 0 1h-1a.5.5 0 0 1-.5-.5m-1.172 2.828a.5.5 0 0 1 .708 0l.707.708a.5.5 0 0 1-.707.707l-.708-.707a.5.5 0 0 1 0-.708M8.5 12a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0v-1a.5.5 0 0 1 .5-.5"/>
+</svg>
+                        <p>${weatherData.temp}°C</p>
+                    </div>
+                    <div class="small-card">
+                        <h5>Feels Like</h5>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="70" height="70" fill="currentColor" class="bi bi-thermometer-snow" viewBox="0 0 16 16">
+  <path d="M5 12.5a1.5 1.5 0 1 1-2-1.415V9.5a.5.5 0 0 1 1 0v1.585A1.5 1.5 0 0 1 5 12.5"/>
+  <path d="M1 2.5a2.5 2.5 0 0 1 5 0v7.55a3.5 3.5 0 1 1-5 0zM3.5 1A1.5 1.5 0 0 0 2 2.5v7.987l-.167.15a2.5 2.5 0 1 0 3.333 0L5 10.486V2.5A1.5 1.5 0 0 0 3.5 1m5 1a.5.5 0 0 1 .5.5v1.293l.646-.647a.5.5 0 0 1 .708.708L9 5.207v1.927l1.669-.963.495-1.85a.5.5 0 1 1 .966.26l-.237.882 1.12-.646a.5.5 0 0 1 .5.866l-1.12.646.884.237a.5.5 0 1 1-.26.966l-1.848-.495L9.5 8l1.669.963 1.849-.495a.5.5 0 1 1 .258.966l-.883.237 1.12.646a.5.5 0 0 1-.5.866l-1.12-.646.237.883a.5.5 0 1 1-.966.258L10.67 9.83 9 8.866v1.927l1.354 1.353a.5.5 0 0 1-.708.708L9 12.207V13.5a.5.5 0 0 1-1 0v-11a.5.5 0 0 1 .5-.5"/>
+</svg>
+                        <p>${weatherData.feelslike}°C</p>
+                    </div>
+                    <div class="small-card">
+                        <h5>Humidity</h5>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="70" height="70" fill="currentColor" class="bi bi-clouds-fill" viewBox="0 0 16 16">
+  <path d="M11.473 9a4.5 4.5 0 0 0-8.72-.99A3 3 0 0 0 3 14h8.5a2.5 2.5 0 1 0-.027-5"/>
+  <path d="M14.544 9.772a3.5 3.5 0 0 0-2.225-1.676 5.5 5.5 0 0 0-6.337-4.002 4.002 4.002 0 0 1 7.392.91 2.5 2.5 0 0 1 1.17 4.769z"/>
+</svg>
+                        <p>${weatherData.humidity}%</p>
+                    </div>
+                    <div class="small-card">
+                        <h5>Wind Speed</h5>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="70" height="70" fill="currentColor" class="bi bi-wind" viewBox="0 0 16 16">
+  <path d="M12.5 2A2.5 2.5 0 0 0 10 4.5a.5.5 0 0 1-1 0A3.5 3.5 0 1 1 12.5 8H.5a.5.5 0 0 1 0-1h12a2.5 2.5 0 0 0 0-5m-7 1a1 1 0 0 0-1 1 .5.5 0 0 1-1 0 2 2 0 1 1 2 2h-5a.5.5 0 0 1 0-1h5a1 1 0 0 0 0-2M0 9.5A.5.5 0 0 1 .5 9h10.042a3 3 0 1 1-3 3 .5.5 0 0 1 1 0 2 2 0 1 0 2-2H.5a.5.5 0 0 1-.5-.5"/>
+</svg>
+                        <p>${weatherData.windspeed} km/h</p>
+                    </div>
+                    <div class="small-card">
+                        <h5>Sunrise</h5>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="70" height="70" fill="currentColor" class="bi bi-cloud-sun-fill" viewBox="0 0 16 16">
+  <path d="M11.473 11a4.5 4.5 0 0 0-8.72-.99A3 3 0 0 0 3 16h8.5a2.5 2.5 0 0 0 0-5z"/>
+  <path d="M10.5 1.5a.5.5 0 0 0-1 0v1a.5.5 0 0 0 1 0zm3.743 1.964a.5.5 0 1 0-.707-.707l-.708.707a.5.5 0 0 0 .708.708zm-7.779-.707a.5.5 0 0 0-.707.707l.707.708a.5.5 0 1 0 .708-.708zm1.734 3.374a2 2 0 1 1 3.296 2.198q.3.423.516.898a3 3 0 1 0-4.84-3.225q.529.017 1.028.129m4.484 4.074c.6.215 1.125.59 1.522 1.072a.5.5 0 0 0 .039-.742l-.707-.707a.5.5 0 0 0-.854.377M14.5 6.5a.5.5 0 0 0 0 1h1a.5.5 0 0 0 0-1z"/>
+</svg>
+                        <p>${moment(weatherData.sunrise).format('HH:mm A')}</p>
+                    </div>
+                    <div class="small-card">
+                        <h5>Sunset</h5>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="70" height="70" fill="currentColor" class="bi bi-cloud-moon-fill" viewBox="0 0 16 16">
+  <path d="M11.473 11a4.5 4.5 0 0 0-8.72-.99A3 3 0 0 0 3 16h8.5a2.5 2.5 0 0 0 0-5z"/>
+  <path d="M11.286 1.778a.5.5 0 0 0-.565-.755 4.595 4.595 0 0 0-3.18 5.003 5.5 5.5 0 0 1 1.055.209A3.6 3.6 0 0 1 9.83 2.617a4.593 4.593 0 0 0 4.31 5.744 3.58 3.58 0 0 1-2.241.634q.244.477.394 1a4.59 4.59 0 0 0 3.624-2.04.5.5 0 0 0-.565-.755 3.593 3.593 0 0 1-4.065-5.422z"/>
+</svg>
+                        <p>${moment(weatherData.sunset).format('HH:mm A')}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function displayForecast(forecastData) {
+    const forecastDiv = document.getElementById('forecast');
+    forecastDiv.innerHTML = `
+        <h2>5-Day Forecast</h2>
+        <div class="small-cards-container">
+            ${forecastData.map(day => {
+                console.log(day); // Log the day data to check structure
+                const maxTemp = day.tempmax !== undefined ? day.tempmax : 'N/A';
+                const minTemp = day.tempmin !== undefined ? day.tempmin : 'N/A';
+                
+                return `
+                    <div class="forecast-small-card">
+                        <i class="fas fa-sun"></i>
+                        <div>
+                            <h5>${moment(day.datetime).format('dddd, MMMM Do')}</h5>
+                            <p>${day.conditions}</p> <!-- Weather condition -->
+                            <p>${maxTemp}°C / ${minTemp}°C</p>
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+
+
+
+        function createTemperatureChart(days) {
+            const ctx = document.getElementById('tempChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: days.map(day => moment(day.datetime).format('ddd')),
+                    datasets: [{
+                        label: 'Temperature (°C)',
+                        data: days.map(day => day.tempmax),
+                        borderColor: 'rgba(74, 144, 226, 1)',
+                        backgroundColor: 'rgba(74, 144, 226, 0.2)',
+                        borderWidth: 2,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Temperature (°C)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createPrecipitationChart(days) {
+            const ctx = document.getElementById('precipChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: days.map(day => moment(day.datetime).format('ddd')),
+                    datasets: [{
+                        label: 'Precipitation (%)',
+                        data: days.map(day => day.precipprob),
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Precipitation (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createWindChart(days) {
+            const ctx = document.getElementById('windChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'polarArea',
+                data: {
+                    labels: days.map(day => moment(day.datetime).format('ddd')),
+                    datasets: [{
+                        label: 'Wind Speed (km/h)',
+                        data: days.map(day => day.windspeed),
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+
+        function createHumidityChart(days) {
+            const ctx = document.getElementById('humidityChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: days.map(day => moment(day.datetime).format('ddd')),
+                    datasets: [{
+                        label: 'Humidity (%)',
+                        data: days.map(day => day.humidity),
+                        borderColor: 'rgba(153, 102, 255, 1)',
+                        backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                        borderWidth: 2,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Humidity (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createUVIndexChart(days) {
+            const ctx = document.getElementById('uvIndexChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: days.map(day => moment(day.datetime).format('ddd')),
+                    datasets: [{
+                        label: 'UV Index',
+                        data: days.map(day => day.uvindex),
+                        backgroundColor: 'rgba(255, 206, 86, 0.2)',
+                        borderColor: 'rgba(255, 206, 86, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'UV Index'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createPressureChart(days) {
+            const ctx = document.getElementById('pressureChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: days.map(day => moment(day.datetime).format('ddd')),
+                    datasets: [{
+  
